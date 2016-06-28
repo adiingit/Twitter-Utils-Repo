@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -27,6 +28,8 @@ import twitter4j.conf.ConfigurationBuilder;
 
 public class SelfLearningExecutor {
 
+	final static Logger logger = Logger.getLogger(SelfLearningExecutor.class);
+
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
 
 		String accessToken = "273347143-r6KLzwCkGODLO7TOrawqcbkMGLk2lJVI1GLuOjGw";
@@ -41,18 +44,20 @@ public class SelfLearningExecutor {
 		builder.setOAuthConsumerSecret(password);
 
 		SparkConf conf = new SparkConf().setMaster("spark://dllu0003:7077").setAppName("TwitterUtils");
-		JavaStreamingContext sc = new JavaStreamingContext(conf, Durations.seconds(30));
+		JavaStreamingContext sc = new JavaStreamingContext(conf, Durations.seconds(2));
 
 		JavaDStream<Status> dtweets = TwitterUtils.createStream(sc, new OAuthAuthorization(builder.build()));
 
-		JavaDStream<Status> filtered = dtweets.filter(x -> PriorityHashTags.testForPriorityHashTags(x));
+		JavaDStream<Status> filtered = dtweets.filter(x -> {logger.warn("inside filter"); return null;});
 
+//		JavaDStream<Status> filtered = dtweets;
+		
 		filtered.foreachRDD(new Function<JavaRDD<Status>, Void>() {
 			@Override
 			public Void call(JavaRDD<Status> v1) throws Exception {
-				for(Status s : v1.collect()) {
-					PriorityHashTags.writePriorityHashTags(Arrays.asList(s.getText().split(" ")));
-				} 
+				for (Status s : v1.collect()) {
+					PriorityHashTags.writeNewHashTags(Arrays.asList(s.getText().split(" ")));
+				}
 				return null;
 			}
 		});
